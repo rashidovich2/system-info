@@ -124,10 +124,11 @@ class Windows:
 
     def ramManufacturer(self):
         ramManufacturer = str(subprocess.check_output(
-            'wmic memorychip get manufacturer'))
+            'wmic memorychip get manufacturer,devicelocator'))
         ramManufacturer = ramManufacturer.replace(r'\r', '')
         ramManufacturer = ramManufacturer.replace(r'\n', '')
-        ramManufacturer = ramManufacturer.replace(r"b'Manufacturer", '')
+        ramManufacturer = ramManufacturer.replace(r"Manufacturer", '')
+        ramManufacturer = ramManufacturer.replace(r"b'DeviceLocator", '')
         ramManufacturer = ramManufacturer.replace(r"'", '')
         ramManufacturer = ramManufacturer.strip()
         rams = ramManufacturer.split('  ')
@@ -185,14 +186,17 @@ class Windows:
                 cores += "\n"
             cores += f"Core {i}: {percentage}%"
             n += 1
-        self.infdb["CPU Usage Per Core"] = cores
         self.infdb["Total CPU Usage"] = f"{psutil.cpu_percent()}%"
+        self.infdb["CPU Usage Per Core:"] = cores
 
         # ==== MEMORY ====
         svmem = psutil.virtual_memory()
         self.infdb["Memory Total"] = f"{self.get_size(svmem.total)}"
-        for i, ram in enumerate(self.ramManufacturer()):
-            self.infdb[f"Memory Manufacturer[{i}]"] = f"{ram.strip()}"
+        self.infdb["Memory Manufacturer:"] = ""
+        rams = self.ramManufacturer()
+        step = len(rams)//2
+        for i in range(0, len(rams), step):
+            self.infdb[f"{rams[i].strip()}"] = rams[i+1].strip()
         self.infdb["Memory Available"] = f"{self.get_size(svmem.available)}"
         self.infdb["Memory Used"] = f"{self.get_size(svmem.used)}"
         self.infdb["Memory Percentage"] = f"{svmem.percent}%"
