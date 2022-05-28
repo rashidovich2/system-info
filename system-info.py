@@ -1,0 +1,261 @@
+from distutils import core
+from tkinter import ttk
+import psutil
+import platform
+from datetime import datetime
+import cpuinfo
+import socket
+import uuid
+import re
+import subprocess
+import winreg as reg
+from datetime import datetime
+try:
+    from tkinter import *
+except ImportError:
+    from Tkinter import *
+
+
+class Windows:
+    def __init__(self) -> None:
+        self.infdb = {}
+
+    def run(self):
+        self.system_information()
+
+    def infoTxT(self, text):
+        self.info += "\n" + text
+
+    def computersystem(self):
+        sysdm = str(subprocess.check_output(
+            "wmic computersystem get model,manufacturer,systemtype"))
+        sysdm = sysdm.replace(r'\r', '')
+        sysdm = sysdm.replace(r'\n', '')
+        sysdm = sysdm.replace(r"b'Manufacturer  Model  SystemType", '')
+        sysdm = sysdm.replace(r"'", '')
+        sysdm = sysdm.replace(r"  ", ' ')
+        sysdm = sysdm.strip()
+        sysdm = re.sub(' +', ' ', sysdm)
+        return sysdm
+
+    def get_size(self, bytes, suffix="B"):
+        """
+        Scale bytes to its proper format
+        e.g:
+            1253656 => '1.20MB'
+            1253656678 => '1.17GB'
+        """
+        factor = 1024
+        for unit in ["", "K", "M", "G", "T", "P"]:
+            if bytes < factor:
+                return f"{bytes:.2f}{unit}{suffix}"
+            bytes /= factor
+
+    def mainBoard(self):
+        board = str(subprocess.check_output(
+            "wmic baseboard get product,Manufacturer,version,serialnumber"))
+        board = board.replace(r'\r', '')
+        board = board.replace(r'\n', '')
+        board = board.replace(
+            r"b'Manufacturer  Product     SerialNumber  Version", '')
+        board = board.replace(r"'", '')
+        board = board.strip()
+        board = board.split('  ')
+        while '' in board:
+            board.remove('')
+        boardM = str(subprocess.check_output(
+            "wmic csproduct get vendor, version"))
+        boardM = boardM.replace(r'\r', '')
+        boardM = boardM.replace(r'\n', '')
+        boardM = boardM.replace(r"b'Vendor  Version ", '')
+        boardM = boardM.replace(r"'", '')
+        boardM = boardM.replace(r"  ", ' ')
+        boardM = boardM.strip()
+        self.infdb["MainBoard Model"] = board[0]
+        self.infdb["MainBoard Vendor"] = boardM
+        self.infdb["MainBoard Product"] = board[1]
+        self.infdb["MainBoard SerialNumber"] = board[2]
+        self.infdb["MainBoard Version"] = board[3]
+
+    def diskSpace(self):
+        HDD = str(subprocess.check_output(
+            'wmic diskdrive get model,serialNumber,size'))
+        HDD = HDD.replace(r'\r', '')
+        HDD = HDD.replace(r'\n', '')
+        HDD = HDD.replace(r"b'Model", '')
+        HDD = HDD.replace(r"Size", '')
+        HDD = HDD.replace(r"SerialNumber", '')
+        HDD = HDD.replace(r"'", '')
+        HDD = HDD.strip()
+        HDD = HDD.split('  ')
+        while '' in HDD:
+            HDD.remove('')
+        HDDs = list()
+        chunk_size = 3
+        for i in range(0, len(HDD), chunk_size):
+            HDDs.append(HDD[i:i+chunk_size])
+        for i in range(len(HDDs)):
+            HDDs[i][2] = f"{round(int(HDDs[i][2])/1024**3)} GB"
+        for i in range(len(HDDs)):
+            self.infdb[f"HDD Model[{i}]"] = f"{HDDs[i][0]}"
+            self.infdb[f"HDD serialNumber[{i}]"] = f"{HDDs[i][1]}"
+            self.infdb[f"HDD Space[{i}]"] = f"{HDDs[i][2]}"
+
+    def dvdRom(self):
+        dvdrom = str(subprocess.check_output(
+            "wmic cdrom where mediatype!='unknown' get caption"))
+        dvdrom = dvdrom.replace(r'\r', '')
+        dvdrom = dvdrom.replace(r'\n', '')
+        dvdrom = dvdrom.replace(r"b'Caption", '')
+        dvdrom = dvdrom.replace(r"'", '')
+        dvdrom = dvdrom.strip()
+        self.infdb["DvD Rom"] = dvdrom
+
+    def ramManufacturer(self):
+        ramManufacturer = str(subprocess.check_output(
+            'wmic memorychip get manufacturer'))
+        ramManufacturer = ramManufacturer.replace(r'\r', '')
+        ramManufacturer = ramManufacturer.replace(r'\n', '')
+        ramManufacturer = ramManufacturer.replace(r"b'Manufacturer", '')
+        ramManufacturer = ramManufacturer.replace(r"'", '')
+        ramManufacturer = ramManufacturer.strip()
+        return ramManufacturer
+
+    def system_information(self):
+        uname = platform.uname()
+        # win install date
+        key = reg.OpenKey(reg.HKEY_LOCAL_MACHINE,
+                          r'SOFTWARE\Microsoft\Windows NT\CurrentVersion')
+        secs = reg.QueryValueEx(key, 'InstallDate')[0]
+        installDateWin = datetime.fromtimestamp(secs)
+        domain = subprocess.run(["powershell.exe", "(Get-CimInstance Win32_ComputerSystem).Domain"],
+                                stdout=subprocess.PIPE, text=True).stdout.strip()
+        self.infdb["Computer Name"] = uname.node
+        self.infdb["workgroup"] = domain
+        self.infdb["system operation"] = uname.system
+        self.infdb["Release"] = uname.release
+        self.infdb["Version"] = uname.version
+        self.infdb["System Type"] = platform.architecture()[0]
+        self.infdb["Install Date"] = installDateWin
+        self.infdb["sysdm"] = self.computersystem()
+        self.infdb["Machine"] = uname.machine
+        self.infdb["Ip-Address"] = socket.gethostbyname(socket.gethostname())
+        self.infdb["Mac-Address"] = ':'.join(
+            re.findall('..', '%012x' % uuid.getnode()))
+        self.mainBoard()
+        boot_time_timestamp = psutil.boot_time()
+        bt = datetime.fromtimestamp(boot_time_timestamp)
+        self.infdb["Boot Time"] = f"{bt.year}/{bt.month}/{bt.day} {bt.hour}:{bt.minute}:{bt.second}"
+
+        # ==== CPU ====
+        self.infdb["Processor"] = uname.processor
+        self.infdb["Processor(cpu)"] = cpuinfo.get_cpu_info()['brand_raw']
+        self.infdb["Physical cores"] = psutil.cpu_count(logical=False)
+        self.infdb["Total cores"] = psutil.cpu_count(logical=True)
+        # CPU frequencies
+        cpufreq = psutil.cpu_freq()
+        self.infdb["Max Frequency"] = f"{cpufreq.max:.2f}Mhz"
+        self.infdb["Min Frequency"] = f"{cpufreq.min:.2f}Mhz"
+        self.infdb["Current Frequency"] = f"{cpufreq.current:.2f}Mhz"
+        # CPU usage
+        cores = ""
+        n = 0
+        for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
+            if n > 0:
+                cores += "\n"
+            cores += f"Core {i}: {percentage}%"
+            n += 1
+        self.infdb["CPU Usage Per Core"] = cores
+        self.infdb["Total CPU Usage"] = f"{psutil.cpu_percent()}%"
+
+        # ==== MEMORY ====
+        svmem = psutil.virtual_memory()
+        self.infdb["Memory Total"] = f"{self.get_size(svmem.total)}"
+        self.infdb["Memory Manufacturer"] = f"{self.ramManufacturer()}"
+        self.infdb["Memory Available"] = f"{self.get_size(svmem.available)}"
+        self.infdb["Memory Used"] = f"{self.get_size(svmem.used)}"
+        self.infdb["Memory Percentage"] = f"{svmem.percent}%"
+        # SWAP
+        # get the swap memory details (if exists)
+        swap = psutil.swap_memory()
+        self.infdb["SWAP Total"] = f"{self.get_size(swap.total)}"
+        self.infdb["SWAP Free"] = f"{self.get_size(swap.free)}"
+        self.infdb["SWAP Used"] = f"{self.get_size(swap.used)}"
+        self.infdb["SWAP Percentage"] = f"{swap.percent}%"
+
+        # === Disk Information ====
+        # print("Partitions and Usage:")
+        # get all disk partitions
+        # partitions = psutil.disk_partitions()
+        # for partition in partitions:
+        # print(f"=== Device: {partition.device} ===")
+        # print(f"  Mountpoint: {partition.mountpoint}")
+        # print(f"  File system type: {partition.fstype}")
+        # try:
+        #     partition_usage = psutil.disk_usage(partition.mountpoint)
+        # except PermissionError:
+        #     # this can be catched due to the disk that
+        #     # isn't ready
+        #     continue
+        # print(f"  Total Size: {get_size(partition_usage.total)}")
+        # print(f"  Used: {get_size(partition_usage.used)}")
+        # print(f"  Free: {get_size(partition_usage.free)}")
+        # print(f"  Percentage: {partition_usage.percent}%")
+        # get IO statistics since boot
+        disk_io = psutil.disk_io_counters()
+        self.diskSpace()
+        self.infdb["Total read"] = f"{self.get_size(disk_io.read_bytes)}"
+        self.infdb["Total write"] = f"{self.get_size(disk_io.write_bytes)}"
+
+        self.dvdRom()
+
+
+class ShowGUI:
+    def __init__(self, lst_inf):
+        self.lst_inf = lst_inf
+        self.root = Tk()
+        self.root.title('SYSTEM Information')
+        # inftitle = "-"*60 + " SYSTEM Information " + "-"*60
+        # self.message = Label(self.root, text=inftitle)
+        # self.message.pack()
+
+        self.tableView()
+        self.run()
+
+    def run(self):
+        try:
+            from ctypes import windll
+            windll.shcore.SetProcessDpiAwareness(1)
+        finally:
+            self.root.mainloop()
+
+    def tableView(self):
+        from prettytable import PrettyTable
+        t = ExpandoText(self.root, wrap="word")
+        x = PrettyTable()
+        x.field_names = ["Title", "Detail"]
+        for k in self.lst_inf:
+            x.add_row([k, self.lst_inf[k]])
+        t.insert(INSERT, x)
+        t.tag_configure("center", justify='center')
+        t.tag_add("center", "1.0", "end")
+        t.pack(fill="both", expand=True)
+
+
+
+class ExpandoText(Text):
+    def insert(self, *args, **kwargs):
+        result = Text.insert(self, *args, **kwargs)
+        self.reset_height()
+        return result
+
+    def reset_height(self):
+        height = self.tk.call(
+            (self._w, "count", "-update", "-displaylines", "1.0", "end"))
+        self.configure(height=height)
+
+win_inf = Windows()
+win_inf.run()
+lst = win_inf.infdb
+
+display = ShowGUI(lst_inf=lst)
