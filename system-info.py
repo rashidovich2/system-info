@@ -31,7 +31,9 @@ class Windows:
             "wmic computersystem get model,manufacturer,systemtype"))
         sysdm = sysdm.replace(r'\r', '')
         sysdm = sysdm.replace(r'\n', '')
-        sysdm = sysdm.replace(r"b'Manufacturer  Model  SystemType", '')
+        sysdm = sysdm.replace(r"b'Manufacturer", '')
+        sysdm = sysdm.replace(r"Model", '')
+        sysdm = sysdm.replace(r"SystemType", '')
         sysdm = sysdm.replace(r"'", '')
         sysdm = sysdm.replace(r"  ", ' ')
         sysdm = sysdm.strip()
@@ -56,8 +58,10 @@ class Windows:
             "wmic baseboard get product,Manufacturer,version,serialnumber"))
         board = board.replace(r'\r', '')
         board = board.replace(r'\n', '')
-        board = board.replace(
-            r"b'Manufacturer  Product     SerialNumber  Version", '')
+        board = board.replace(r"b'Manufacturer", '')
+        board = board.replace(r"Product", '')
+        board = board.replace(r"SerialNumber", '')
+        board = board.replace(r"Version", '')
         board = board.replace(r"'", '')
         board = board.strip()
         board = board.split('  ')
@@ -67,7 +71,8 @@ class Windows:
             "wmic csproduct get vendor, version"))
         boardM = boardM.replace(r'\r', '')
         boardM = boardM.replace(r'\n', '')
-        boardM = boardM.replace(r"b'Vendor  Version ", '')
+        boardM = boardM.replace(r"b'Vendor", '')
+        boardM = boardM.replace(r"Version ", '')
         boardM = boardM.replace(r"'", '')
         boardM = boardM.replace(r"  ", ' ')
         boardM = boardM.strip()
@@ -102,14 +107,20 @@ class Windows:
             self.infdb[f"HDD Space[{i}]"] = f"{HDDs[i][2]}"
 
     def dvdRom(self):
-        dvdrom = str(subprocess.check_output(
-            "wmic cdrom where mediatype!='unknown' get caption"))
-        dvdrom = dvdrom.replace(r'\r', '')
-        dvdrom = dvdrom.replace(r'\n', '')
-        dvdrom = dvdrom.replace(r"b'Caption", '')
-        dvdrom = dvdrom.replace(r"'", '')
-        dvdrom = dvdrom.strip()
-        self.infdb["DvD Rom"] = dvdrom
+        try:
+            dvdrom = str(subprocess.check_output(
+                "wmic cdrom where mediatype!='unknown' get caption"))
+            dvdrom = dvdrom.replace(r'\r', '')
+            dvdrom = dvdrom.replace(r'\n', '')
+            dvdrom = dvdrom.replace(r"b'Caption", '')
+            dvdrom = dvdrom.replace(r"'", '')
+            dvdrom = dvdrom.strip()
+            if not 'b' == dvdrom:
+                self.infdb["DvD Rom"] = dvdrom
+            else:
+                raise Exception('No Instance(s) Available.')
+        except:
+            self.infdb["DvD Rom"] = None
 
     def ramManufacturer(self):
         ramManufacturer = str(subprocess.check_output(
@@ -119,7 +130,15 @@ class Windows:
         ramManufacturer = ramManufacturer.replace(r"b'Manufacturer", '')
         ramManufacturer = ramManufacturer.replace(r"'", '')
         ramManufacturer = ramManufacturer.strip()
-        return ramManufacturer
+        rams = ramManufacturer.split('  ')
+        while '' in rams:
+            rams.remove('')
+        return rams
+
+    def ip_address(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]
 
     def system_information(self):
         uname = platform.uname()
@@ -139,7 +158,8 @@ class Windows:
         self.infdb["Install Date"] = installDateWin
         self.infdb["sysdm"] = self.computersystem()
         self.infdb["Machine"] = uname.machine
-        self.infdb["Ip-Address"] = socket.gethostbyname(socket.gethostname())
+        self.infdb["Ip-Address"] = self.ip_address() + "\n" + \
+            socket.gethostbyname(socket.gethostname())
         self.infdb["Mac-Address"] = ':'.join(
             re.findall('..', '%012x' % uuid.getnode()))
         self.mainBoard()
@@ -171,7 +191,8 @@ class Windows:
         # ==== MEMORY ====
         svmem = psutil.virtual_memory()
         self.infdb["Memory Total"] = f"{self.get_size(svmem.total)}"
-        self.infdb["Memory Manufacturer"] = f"{self.ramManufacturer()}"
+        for i, ram in enumerate(self.ramManufacturer()):
+            self.infdb[f"Memory Manufacturer[{i}]"] = f"{ram.strip()}"
         self.infdb["Memory Available"] = f"{self.get_size(svmem.available)}"
         self.infdb["Memory Used"] = f"{self.get_size(svmem.used)}"
         self.infdb["Memory Percentage"] = f"{svmem.percent}%"
@@ -214,10 +235,8 @@ class ShowGUI:
     def __init__(self, lst_inf):
         self.lst_inf = lst_inf
         self.root = Tk()
+        self.root.tk.call('tk', 'scaling', 2.0)
         self.root.title('SYSTEM Information')
-        # inftitle = "-"*60 + " SYSTEM Information " + "-"*60
-        # self.message = Label(self.root, text=inftitle)
-        # self.message.pack()
 
         self.tableView()
         self.run()
@@ -230,17 +249,21 @@ class ShowGUI:
             self.root.mainloop()
 
     def tableView(self):
+        today = datetime.now()
+        dateNow = today.strftime("%Y/%m/%d")
+        # text prettytable
         from prettytable import PrettyTable
         t = ExpandoText(self.root, wrap="word")
         x = PrettyTable()
-        x.field_names = ["Title", "Detail"]
+        x.field_names = ["Title", f"Detail ({dateNow})"]
         for k in self.lst_inf:
             x.add_row([k, self.lst_inf[k]])
         t.insert(INSERT, x)
         t.tag_configure("center", justify='center')
         t.tag_add("center", "1.0", "end")
         t.pack(fill="both", expand=True)
-
+        with open(f"{self.lst_inf['Computer Name']}_{today.strftime('%Y%m%d')}.txt", 'w+') as w:
+            w.write(str(x))
 
 
 class ExpandoText(Text):
@@ -253,6 +276,7 @@ class ExpandoText(Text):
         height = self.tk.call(
             (self._w, "count", "-update", "-displaylines", "1.0", "end"))
         self.configure(height=height)
+
 
 win_inf = Windows()
 win_inf.run()
