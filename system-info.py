@@ -171,6 +171,23 @@ class Windows:
         grphics[0] = f"{round(int(grphics[0])/1024**3)}GB"
         return grphics
 
+    def network(self):
+        net = str(subprocess.check_output(
+            'wmic nic get Name, MACAddress'))
+        net = net.replace(r"Name", '')
+        net = net.replace(r"b'MACAddress", '')
+        net = net.replace(r"'", '')
+        net = net.strip()
+        nets = net.split('\\r\\r\\n')
+        while '' in nets:
+            nets.remove('')
+        for i, nt in enumerate(nets):
+            nets[i] = nt.strip()
+        networks = []
+        for nt in nets:
+            networks.append(nt.split('  '))
+        return networks
+
     def ip_address(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
@@ -194,10 +211,28 @@ class Windows:
         self.infdb["Install Date"] = installDateWin
         self.infdb["sysdm"] = self.computersystem()
         self.infdb["Machine"] = uname.machine
+        # Network
         self.infdb["Ip-Address"] = self.ip_address() + "\n" + \
             socket.gethostbyname(socket.gethostname())
-        self.infdb["Mac-Address"] = ':'.join(
-            re.findall('..', '%012x' % uuid.getnode()))
+        # self.infdb["Mac-Address"] = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
+        nts = self.network()
+        Networks = ""
+        z = 0
+        for n in nts:
+            mac = n[0]
+            try:
+                nets = n[1]
+            except:
+                nets = mac
+                # mac = "                 "
+                mac = ""
+            if z > 0:
+                Networks += '\n'
+            Networks += f"{nets}  [{mac}]"
+            z += 1
+        self.infdb["Network Cards:"] = Networks
+
+        # MainBoard
         self.mainBoard()
         boot_time_timestamp = psutil.boot_time()
         bt = datetime.fromtimestamp(boot_time_timestamp)
@@ -234,13 +269,13 @@ class Windows:
         self.infdb["Memory Available"] = f"{self.get_size(svmem.available)}"
         self.infdb["Memory Used"] = f"{self.get_size(svmem.used)}"
         self.infdb["Memory Percentage"] = f"{svmem.percent}%"
-        
+
         # Graphics
         gr = self.graphic()
         for i in range(0, len(gr), 2):
             self.infdb[f"Graphic Card[{i}]"] = gr[i+1].strip()
             self.infdb[f"Graphic Size[{i}]"] = gr[i].strip()
-        
+
         # SWAP
         # get the swap memory details (if exists)
         swap = psutil.swap_memory()
