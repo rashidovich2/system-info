@@ -194,8 +194,7 @@ class Windows:
         self.infdb["Memory Total"] = f"{self.get_size(svmem.total)}"
         self.infdb["Memory Manufacturer:"] = ""
         rams = self.ramManufacturer()
-        step = len(rams)//2
-        for i in range(0, len(rams), step):
+        for i in range(0, len(rams), 2):
             self.infdb[f"{rams[i].strip()}"] = rams[i+1].strip()
         self.infdb["Memory Available"] = f"{self.get_size(svmem.available)}"
         self.infdb["Memory Used"] = f"{self.get_size(svmem.used)}"
