@@ -188,6 +188,26 @@ class Windows:
             networks.append(nt.split('  '))
         return networks
 
+    def devices(self):
+        devs = str(subprocess.check_output(
+            'wmic printer get DriverName'))
+        devs = devs.replace(r"b'DriverName", '')
+        devs = devs.replace(r"'", '')
+        devs = devs.strip()
+        devss = devs.split('\\r\\r\\n')
+        while '' in devss:
+            devss.remove('')
+        for i, nt in enumerate(devss):
+            devss[i] = nt.strip()
+        dvs = ""
+        z = 0
+        for d in devss:
+            if z > 0:
+                dvs += '\n'
+            dvs += d
+            z += 1
+        return dvs
+
     def ip_address(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
@@ -315,6 +335,9 @@ class Windows:
 
         # DvD Rom
         self.dvdRom()
+        
+        # Devices
+        self.infdb['Devices :'] = self.devices()
 
 
 class ShowGUI:
