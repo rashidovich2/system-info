@@ -82,6 +82,26 @@ class Windows:
         self.infdb["MainBoard SerialNumber"] = board[2]
         self.infdb["MainBoard Version"] = board[3]
 
+    def monitor(self):
+        import win32api
+        from win32com.client import GetObject
+        try:
+            objWMI = GetObject('winmgmts:\\\\.\\root\\WMI').InstancesOf(
+                'WmiMonitorID')  # WmiMonitorConnectionParams
+            monitors = []
+            for i in range(len(objWMI)):
+                monitor = str(objWMI[i].InstanceName)
+                monitor = monitor.split('\\')
+                monitors.append(monitor[1])
+        except Exception as ex:
+            monitors = []
+            monitor = win32api.EnumDisplayDevices('\\\.\\DISPLAY1', 0)
+            monitor = monitor.DeviceID
+            monitor = monitor.split("\\")
+            monitors.append(monitor[1])
+        finally:
+            return monitors
+
     def diskSpace(self):
         HDD = str(subprocess.check_output(
             'wmic diskdrive get model,serialNumber,size'))
@@ -206,7 +226,7 @@ class Windows:
         self.infdb["SWAP Free"] = f"{self.get_size(swap.free)}"
         self.infdb["SWAP Used"] = f"{self.get_size(swap.used)}"
         self.infdb["SWAP Percentage"] = f"{swap.percent}%"
-
+        
         # === Disk Information ====
         # print("Partitions and Usage:")
         # get all disk partitions
@@ -230,7 +250,13 @@ class Windows:
         self.diskSpace()
         self.infdb["Total read"] = f"{self.get_size(disk_io.read_bytes)}"
         self.infdb["Total write"] = f"{self.get_size(disk_io.write_bytes)}"
-
+        
+        # Monitors
+        dp = self.monitor()
+        for i, m in enumerate(dp):
+            self.infdb[f"Monitor[{i}]"] = m
+        
+        # DvD Rom
         self.dvdRom()
 
 
