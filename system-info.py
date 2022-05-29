@@ -186,7 +186,21 @@ class Windows:
         networks = []
         for nt in nets:
             networks.append(nt.split('  '))
-        return networks
+        Networks = ""
+        z = 0
+        for n in networks:
+            mac = n[0]
+            try:
+                nets = n[1]
+            except:
+                nets = mac
+                # mac = "                 "
+                mac = ""
+            if z > 0:
+                Networks += '\n'
+            Networks += f"{nets}  [{mac}]"
+            z += 1
+        return Networks
 
     def devices(self):
         devs = str(subprocess.check_output(
@@ -235,21 +249,7 @@ class Windows:
         self.infdb["Ip-Address"] = self.ip_address() + "\n" + \
             socket.gethostbyname(socket.gethostname())
         # self.infdb["Mac-Address"] = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
-        nts = self.network()
-        Networks = ""
-        z = 0
-        for n in nts:
-            mac = n[0]
-            try:
-                nets = n[1]
-            except:
-                nets = mac
-                # mac = "                 "
-                mac = ""
-            if z > 0:
-                Networks += '\n'
-            Networks += f"{nets}  [{mac}]"
-            z += 1
+        Networks = self.network()
         self.infdb["Network Cards:"] = Networks
 
         # MainBoard
@@ -337,7 +337,7 @@ class Windows:
         self.dvdRom()
         
         # Devices
-        self.infdb['Devices :'] = self.devices()
+        self.infdb['Devices:'] = self.devices()
 
 
 class ShowGUI:
