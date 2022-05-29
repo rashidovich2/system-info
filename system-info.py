@@ -156,6 +156,21 @@ class Windows:
             rams.remove('')
         return rams
 
+    def graphic(self):
+        g = str(subprocess.check_output(
+            'wmic path win32_VideoController get adapterram,name'))
+        g = g.replace(r'\r', '')
+        g = g.replace(r'\n', '')
+        g = g.replace(r"Name", '')
+        g = g.replace(r"b'AdapterRAM", '')
+        g = g.replace(r"'", '')
+        g = g.strip()
+        grphics = g.split('  ')
+        while '' in grphics:
+            grphics.remove('')
+        grphics[0] = f"{round(int(grphics[0])/1024**3)}GB"
+        return grphics
+
     def ip_address(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
@@ -219,6 +234,13 @@ class Windows:
         self.infdb["Memory Available"] = f"{self.get_size(svmem.available)}"
         self.infdb["Memory Used"] = f"{self.get_size(svmem.used)}"
         self.infdb["Memory Percentage"] = f"{svmem.percent}%"
+        
+        # Graphics
+        gr = self.graphic()
+        for i in range(0, len(gr), 2):
+            self.infdb[f"Graphic Card[{i}]"] = gr[i+1].strip()
+            self.infdb[f"Graphic Size[{i}]"] = gr[i].strip()
+        
         # SWAP
         # get the swap memory details (if exists)
         swap = psutil.swap_memory()
@@ -226,7 +248,7 @@ class Windows:
         self.infdb["SWAP Free"] = f"{self.get_size(swap.free)}"
         self.infdb["SWAP Used"] = f"{self.get_size(swap.used)}"
         self.infdb["SWAP Percentage"] = f"{swap.percent}%"
-        
+
         # === Disk Information ====
         # print("Partitions and Usage:")
         # get all disk partitions
@@ -250,12 +272,12 @@ class Windows:
         self.diskSpace()
         self.infdb["Total read"] = f"{self.get_size(disk_io.read_bytes)}"
         self.infdb["Total write"] = f"{self.get_size(disk_io.write_bytes)}"
-        
+
         # Monitors
         dp = self.monitor()
         for i, m in enumerate(dp):
             self.infdb[f"Monitor[{i}]"] = m
-        
+
         # DvD Rom
         self.dvdRom()
 
