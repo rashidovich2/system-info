@@ -6,7 +6,7 @@ from datetime import datetime
 import cpuinfo
 import socket
 import uuid
-import re
+import re,os
 import subprocess
 import winreg as reg
 from datetime import datetime
@@ -104,19 +104,20 @@ class Windows:
 
     def diskSpace(self):
         HDD = str(subprocess.check_output(
-            'wmic diskdrive get model,serialNumber,size'))
+            'wmic diskdrive get model,serialNumber,size,status'))
         HDD = HDD.replace(r'\r', '')
         HDD = HDD.replace(r'\n', '')
         HDD = HDD.replace(r"b'Model", '')
         HDD = HDD.replace(r"Size", '')
         HDD = HDD.replace(r"SerialNumber", '')
+        HDD = HDD.replace(r"Status", '')
         HDD = HDD.replace(r"'", '')
         HDD = HDD.strip()
         HDD = HDD.split('  ')
         while '' in HDD:
             HDD.remove('')
         HDDs = list()
-        chunk_size = 3
+        chunk_size = 4
         for i in range(0, len(HDD), chunk_size):
             HDDs.append(HDD[i:i+chunk_size])
         for i in range(len(HDDs)):
@@ -125,6 +126,8 @@ class Windows:
             self.infdb[f"HDD Model[{i}]"] = f"{HDDs[i][0]}"
             self.infdb[f"HDD serialNumber[{i}]"] = f"{HDDs[i][1]}"
             self.infdb[f"HDD Space[{i}]"] = f"{HDDs[i][2]}"
+            self.infdb[f"HDD status[{i}]"] = f"{HDDs[i][3]}"
+
 
     def dvdRom(self):
         try:
@@ -242,6 +245,7 @@ class Windows:
         self.infdb["Release"] = uname.release
         self.infdb["Version"] = uname.version
         self.infdb["System Type"] = platform.architecture()[0]
+        self.infdb["User"] = str(os.getlogin())
         self.infdb["Install Date"] = installDateWin
         self.infdb["sysdm"] = self.computersystem()
         self.infdb["Machine"] = uname.machine
@@ -347,6 +351,8 @@ class ShowGUI:
         self.lst_inf = lst_inf
         self.root = Tk()
         self.root.tk.call('tk', 'scaling', 2.0)
+        w, h = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        self.root.geometry("%dx%d+0+0" % (w, h))
         self.root.title('SYSTEM Information')
 
         self.tableView()
