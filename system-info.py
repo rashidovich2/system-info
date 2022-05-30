@@ -246,8 +246,10 @@ class Windows:
         self.infdb["sysdm"] = self.computersystem()
         self.infdb["Machine"] = uname.machine
         # Network
-        self.infdb["Ip-Address"] = self.ip_address() + "\n" + \
-            socket.gethostbyname(socket.gethostname())
+        if '192.168' in self.ip_address():
+            self.infdb["Ip-Address"] = self.ip_address()
+        else:
+            self.infdb["Ip-Address"] = socket.gethostbyname(socket.gethostname())
         # self.infdb["Mac-Address"] = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
         Networks = self.network()
         self.infdb["Network Cards:"] = Networks
@@ -290,12 +292,6 @@ class Windows:
         self.infdb["Memory Used"] = f"{self.get_size(svmem.used)}"
         self.infdb["Memory Percentage"] = f"{svmem.percent}%"
 
-        # Graphics
-        gr = self.graphic()
-        for i in range(0, len(gr), 2):
-            self.infdb[f"Graphic Card[{i}]"] = gr[i+1].strip()
-            self.infdb[f"Graphic Size[{i}]"] = gr[i].strip()
-
         # SWAP
         # get the swap memory details (if exists)
         swap = psutil.swap_memory()
@@ -303,6 +299,12 @@ class Windows:
         self.infdb["SWAP Free"] = f"{self.get_size(swap.free)}"
         self.infdb["SWAP Used"] = f"{self.get_size(swap.used)}"
         self.infdb["SWAP Percentage"] = f"{swap.percent}%"
+
+        # Graphics
+        gr = self.graphic()
+        for i in range(0, len(gr), 2):
+            self.infdb[f"Graphic Card[{i}]"] = gr[i+1].strip()
+            self.infdb[f"Graphic Size[{i}]"] = gr[i].strip()
 
         # === Disk Information ====
         # print("Partitions and Usage:")
