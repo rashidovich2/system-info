@@ -6,7 +6,8 @@ from datetime import datetime
 import cpuinfo
 import socket
 import uuid
-import re,os
+import re
+import os
 import subprocess
 import winreg as reg
 from datetime import datetime
@@ -127,7 +128,34 @@ class Windows:
             self.infdb[f"HDD serialNumber[{i}]"] = f"{HDDs[i][1]}"
             self.infdb[f"HDD Space[{i}]"] = f"{HDDs[i][2]}"
             self.infdb[f"HDD status[{i}]"] = f"{HDDs[i][3]}"
-
+        partitions = psutil.disk_partitions()
+        for i, partition in enumerate(partitions):
+            partname = str(partition.device).replace('\\', '')
+            mountpoint = str(partition.mountpoint).replace('\\', '')
+            if partname != "":
+                self.infdb[f"Partition[{i}]:"] = partname
+                PARTITION = partname
+            else:
+                self.infdb[f"Partition[{i}]:"] = mountpoint
+                PARTITION = mountpoint
+            self.infdb[f"File system type[{PARTITION}]"] = partition.fstype
+            try:
+                partition_usage = psutil.disk_usage(partition.mountpoint)
+            except PermissionError:
+                continue
+                # this can be catched due to the disk that
+                # isn't ready
+            self.infdb[f"Total Size[{PARTITION}]"] = self.get_size(
+                partition_usage.total)
+            self.infdb[f"Used[{PARTITION}]"] = self.get_size(
+                partition_usage.used)
+            self.infdb[f"Free[{PARTITION}]"] = self.get_size(
+                partition_usage.free)
+            self.infdb[f"Percentage[{PARTITION}]"] = partition_usage.percent
+        # get IO statistics since boot
+        disk_io = psutil.disk_io_counters()
+        self.infdb["Total read"] = f"{self.get_size(disk_io.read_bytes)}"
+        self.infdb["Total write"] = f"{self.get_size(disk_io.write_bytes)}"
 
     def dvdRom(self):
         try:
@@ -253,7 +281,8 @@ class Windows:
         if '192.168' in self.ip_address():
             self.infdb["Ip-Address"] = self.ip_address()
         else:
-            self.infdb["Ip-Address"] = socket.gethostbyname(socket.gethostname())
+            self.infdb["Ip-Address"] = socket.gethostbyname(
+                socket.gethostname())
         # self.infdb["Mac-Address"] = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
         Networks = self.network()
         self.infdb["Network Cards:"] = Networks
@@ -311,28 +340,8 @@ class Windows:
             self.infdb[f"Graphic Size[{i}]"] = gr[i].strip()
 
         # === Disk Information ====
-        # print("Partitions and Usage:")
-        # get all disk partitions
-        # partitions = psutil.disk_partitions()
-        # for partition in partitions:
-        # print(f"=== Device: {partition.device} ===")
-        # print(f"  Mountpoint: {partition.mountpoint}")
-        # print(f"  File system type: {partition.fstype}")
-        # try:
-        #     partition_usage = psutil.disk_usage(partition.mountpoint)
-        # except PermissionError:
-        #     # this can be catched due to the disk that
-        #     # isn't ready
-        #     continue
-        # print(f"  Total Size: {get_size(partition_usage.total)}")
-        # print(f"  Used: {get_size(partition_usage.used)}")
-        # print(f"  Free: {get_size(partition_usage.free)}")
-        # print(f"  Percentage: {partition_usage.percent}%")
-        # get IO statistics since boot
-        disk_io = psutil.disk_io_counters()
         self.diskSpace()
-        self.infdb["Total read"] = f"{self.get_size(disk_io.read_bytes)}"
-        self.infdb["Total write"] = f"{self.get_size(disk_io.write_bytes)}"
+        # get all disk partitions
 
         # Monitors
         dp = self.monitor()
@@ -341,7 +350,7 @@ class Windows:
 
         # DvD Rom
         self.dvdRom()
-        
+
         # Devices
         self.infdb['Devices:'] = self.devices()
 
