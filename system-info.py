@@ -380,6 +380,7 @@ class ShowGUI:
         # text prettytable
         from prettytable import PrettyTable
         t = ExpandoText(self.root, wrap="word")
+        t.config(foreground="white", background='black')
         x = PrettyTable()
         x.field_names = ["Title", f"Detail ({dateNow})"]
         for k in self.lst_inf:
