@@ -130,28 +130,31 @@ class Windows:
             self.infdb[f"HDD status[{i}]"] = f"{HDDs[i][3]}"
         partitions = psutil.disk_partitions()
         for i, partition in enumerate(partitions):
-            partname = str(partition.device).replace('\\', '')
-            mountpoint = str(partition.mountpoint).replace('\\', '')
-            if partname != "":
-                self.infdb[f"Partition[{i}]:"] = partname
-                PARTITION = partname
-            else:
-                self.infdb[f"Partition[{i}]:"] = mountpoint
-                PARTITION = mountpoint
-            self.infdb[f"File system type[{PARTITION}]"] = partition.fstype
             try:
-                partition_usage = psutil.disk_usage(partition.mountpoint)
-            except PermissionError:
+                partname = str(partition.device).replace('\\', '')
+                mountpoint = str(partition.mountpoint).replace('\\', '')
+                if partname != "":
+                    self.infdb[f"Partition[{i}]:"] = partname
+                    PARTITION = partname
+                else:
+                    self.infdb[f"Partition[{i}]:"] = mountpoint
+                    PARTITION = mountpoint
+                self.infdb[f"File system type[{PARTITION}]"] = partition.fstype
+                try:
+                    partition_usage = psutil.disk_usage(partition.mountpoint)
+                except PermissionError:
+                    continue
+                    # this can be catched due to the disk that
+                    # isn't ready
+                self.infdb[f"Total Size[{PARTITION}]"] = self.get_size(
+                    partition_usage.total)
+                self.infdb[f"Used[{PARTITION}]"] = self.get_size(
+                    partition_usage.used)
+                self.infdb[f"Free[{PARTITION}]"] = self.get_size(
+                    partition_usage.free)
+                self.infdb[f"Percentage[{PARTITION}]"] = partition_usage.percent
+            except:
                 continue
-                # this can be catched due to the disk that
-                # isn't ready
-            self.infdb[f"Total Size[{PARTITION}]"] = self.get_size(
-                partition_usage.total)
-            self.infdb[f"Used[{PARTITION}]"] = self.get_size(
-                partition_usage.used)
-            self.infdb[f"Free[{PARTITION}]"] = self.get_size(
-                partition_usage.free)
-            self.infdb[f"Percentage[{PARTITION}]"] = partition_usage.percent
         # get IO statistics since boot
         disk_io = psutil.disk_io_counters()
         self.infdb["Total read"] = f"{self.get_size(disk_io.read_bytes)}"
