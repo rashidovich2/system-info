@@ -1,4 +1,5 @@
 from distutils import core
+import graphlib
 from tkinter import ttk
 import psutil
 import platform
@@ -8,6 +9,7 @@ import socket
 import uuid
 import re
 import os
+import json
 import subprocess
 import winreg as reg
 from datetime import datetime
@@ -177,18 +179,91 @@ class Windows:
             self.infdb["DvD Rom"] = None
 
     def ramManufacturer(self):
+        RAMs = {}
+        mem = psutil.virtual_memory()
+        RAMs["Memory Total"] = f"{self.get_size(mem.total)}"
+        RAMs["Memory Available"] = f"{self.get_size(mem.available)}"
+        RAMs["Memory Used"] = f"{self.get_size(mem.used)}"
+        RAMs["Memory Percentage"] = f"{mem.percent}%"
         ramManufacturer = str(subprocess.check_output(
-            'wmic memorychip get manufacturer,devicelocator'))
+            'wmic memorychip get Capacity,Description,DeviceLocator,Manufacturer,MemoryType,Name,PartNumber,\
+                PositionInRow,SerialNumber,SMBIOSMemoryType,Speed,Tag,TotalWidth,TypeDetail'))
         ramManufacturer = ramManufacturer.replace(r'\r', '')
         ramManufacturer = ramManufacturer.replace(r'\n', '')
+        ramManufacturer = ramManufacturer.replace(r"b'Capacity", '')
+        ramManufacturer = ramManufacturer.replace(r"Description", '')
+        ramManufacturer = ramManufacturer.replace(r"DeviceLocator", '')
         ramManufacturer = ramManufacturer.replace(r"Manufacturer", '')
-        ramManufacturer = ramManufacturer.replace(r"b'DeviceLocator", '')
+        ramManufacturer = ramManufacturer.replace(r"SMBIOSMemoryType", '')
+        ramManufacturer = ramManufacturer.replace(r"MemoryType", '')
+        ramManufacturer = ramManufacturer.replace(r"Name", '')
+        ramManufacturer = ramManufacturer.replace(r"PartNumber", '')
+        ramManufacturer = ramManufacturer.replace(r"PositionInRow", '')
+        ramManufacturer = ramManufacturer.replace(r"SerialNumber", '')
+        ramManufacturer = ramManufacturer.replace(r"Speed", '')
+        ramManufacturer = ramManufacturer.replace(r"Tag", '')
+        ramManufacturer = ramManufacturer.replace(r"TotalWidth", '')
+        ramManufacturer = ramManufacturer.replace(r"TypeDetail", '')
         ramManufacturer = ramManufacturer.replace(r"'", '')
         ramManufacturer = ramManufacturer.strip()
         rams = ramManufacturer.split('  ')
         while '' in rams:
             rams.remove('')
-        return rams
+        RAMs_exp = []
+        chunk_size = 14
+        for i in range(0, len(rams), chunk_size):
+            RAMs_exp.append(rams[i:i+chunk_size])
+        for i in range(len(RAMs_exp)):
+            RAMs_exp[i][0] = f"{round(int(RAMs_exp[i][0])/1024**3)}"
+        for i in range(len(RAMs_exp)):
+            Name = None
+            DDR = None
+            RAM = {}
+            Description = str(RAMs_exp[i][1]).strip()
+            Name_ = str(RAMs_exp[i][5]).strip()
+            Tag = str(RAMs_exp[i][11]).strip()
+            if Description != '':
+                Name = f"{Description} [{i}]"
+            elif Name_ != '':
+                Name = f"{Name_} [{i}]"
+            if int(RAMs_exp[i][4]) != 0:
+                if int(RAMs_exp[i][4]) == 20:
+                    DDR = "DDR1"
+                elif int(RAMs_exp[i][4]) == 21:
+                    DDR = "DDR2"
+                elif int(RAMs_exp[i][4]) == 22:
+                    DDR = "DDR2 FB-DIMM"
+                elif int(RAMs_exp[i][4]) == 24:
+                    DDR = "DDR3"
+                elif int(RAMs_exp[i][4]) == 26:
+                    DDR = "DDR4"
+                else:
+                    DDR = "None"
+            if int(RAMs_exp[i][9]) != 0:
+                if int(RAMs_exp[i][9]) == 20:
+                    DDR = "DDR1"
+                elif int(RAMs_exp[i][9]) == 21:
+                    DDR = "DDR2"
+                elif int(RAMs_exp[i][9]) == 22:
+                    DDR = "DDR2 FB-DIMM"
+                elif int(RAMs_exp[i][9]) == 24:
+                    DDR = "DDR3"
+                elif int(RAMs_exp[i][9]) == 26:
+                    DDR = "DDR4"
+                else:
+                    DDR = "None"
+            RAM[f"Size"] = f"{RAMs_exp[i][0]}GB"
+            RAM[f"DeviceLocator"] = f"{RAMs_exp[i][2]}"
+            RAM[f"Manufacturer"] = f"{RAMs_exp[i][3]}"
+            RAM[f"Type"] = f"{DDR}"
+            RAM[f"PartNumber"] = f"{RAMs_exp[i][6]}"
+            RAM[f"PositionInRow"] = f"{RAMs_exp[i][7]}"
+            RAM[f"SerialNumber"] = f"{RAMs_exp[i][8]}"
+            RAM[f"Speed"] = f"{RAMs_exp[i][10]} Mhz"
+            RAM[f"TotalWidth"] = f"{RAMs_exp[i][12]}"
+            RAM[f"TypeDetail"] = f"{RAMs_exp[i][13]}"
+            RAMs[f"{Name}"] = RAM
+        return RAMs
 
     def graphic(self):
         g = str(subprocess.check_output(
@@ -202,7 +277,8 @@ class Windows:
         grphics = g.split('  ')
         while '' in grphics:
             grphics.remove('')
-        grphics[0] = f"{round(int(grphics[0])/1024**3)}GB"
+        for i in range(0, len(grphics), 2):
+            grphics[i] = f"{round(int(grphics[i])/1024**3)}GB"
         return grphics
 
     def network(self):
@@ -271,8 +347,8 @@ class Windows:
         domain = subprocess.run(["powershell.exe", "(Get-CimInstance Win32_ComputerSystem).Domain"],
                                 stdout=subprocess.PIPE, text=True).stdout.strip()
         self.infdb["Computer Name"] = uname.node
-        self.infdb["workgroup"] = domain
-        self.infdb["system operation"] = uname.system
+        self.infdb["WorkGroup"] = domain
+        self.infdb["Operation System"] = uname.system
         self.infdb["Release"] = uname.release
         self.infdb["Version"] = uname.version
         self.infdb["System Type"] = platform.architecture()[0]
@@ -318,15 +394,16 @@ class Windows:
         self.infdb["CPU Usage Per Core:"] = cores
 
         # ==== MEMORY ====
-        svmem = psutil.virtual_memory()
-        self.infdb["Memory Total"] = f"{self.get_size(svmem.total)}"
-        self.infdb["Memory Manufacturer:"] = ""
         rams = self.ramManufacturer()
-        for i in range(0, len(rams), 2):
-            self.infdb[f"{rams[i].strip()}"] = rams[i+1].strip()
-        self.infdb["Memory Available"] = f"{self.get_size(svmem.available)}"
-        self.infdb["Memory Used"] = f"{self.get_size(svmem.used)}"
-        self.infdb["Memory Percentage"] = f"{svmem.percent}%"
+        m = 0
+        for k, v in rams.items():
+            if isinstance(v, dict):
+                self.infdb[k] = "-"*10
+                for k2, v2 in v.items():
+                    self.infdb[f"{k2}[{m}]"] = v2
+                m += 1
+            else:
+                self.infdb[k] = v
 
         # SWAP
         # get the swap memory details (if exists)
@@ -338,9 +415,11 @@ class Windows:
 
         # Graphics
         gr = self.graphic()
+        g = 0
         for i in range(0, len(gr), 2):
-            self.infdb[f"Graphic Card[{i}]"] = gr[i+1].strip()
-            self.infdb[f"Graphic Size[{i}]"] = gr[i].strip()
+            self.infdb[f"Graphic Card[{g}]"] = gr[i+1].strip()
+            self.infdb[f"Graphic Size[{g}]"] = gr[i].strip()
+            g += 1
 
         # === Disk Information ====
         self.diskSpace()
