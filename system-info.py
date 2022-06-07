@@ -1,5 +1,4 @@
 from distutils import core
-import graphlib
 from tkinter import ttk
 import psutil
 import platform
@@ -9,7 +8,6 @@ import socket
 import uuid
 import re
 import os
-import json
 import subprocess
 import winreg as reg
 from datetime import datetime
@@ -178,91 +176,173 @@ class Windows:
         except:
             self.infdb["DvD Rom"] = None
 
+    def rmClear(self, cmd):
+        cmd = cmd.replace(r'\r', '')
+        cmd = cmd.replace(r'\n', '')
+        cmd = cmd.replace(r"'", '')
+        cmd = cmd.strip()
+        cmds = cmd.split('  ')
+        while '' in cmds:
+            cmds.remove('')
+        return cmds
+
     def ramManufacturer(self):
         RAMs = {}
+        unknown = None
         mem = psutil.virtual_memory()
         RAMs["Memory Total"] = f"{self.get_size(mem.total)}"
         RAMs["Memory Available"] = f"{self.get_size(mem.available)}"
         RAMs["Memory Used"] = f"{self.get_size(mem.used)}"
         RAMs["Memory Percentage"] = f"{mem.percent}%"
-        ramManufacturer = str(subprocess.check_output(
-            'wmic memorychip get Capacity,Description,DeviceLocator,Manufacturer,MemoryType,Name,PartNumber,\
-                PositionInRow,SerialNumber,SMBIOSMemoryType,Speed,Tag,TotalWidth,TypeDetail'))
-        ramManufacturer = ramManufacturer.replace(r'\r', '')
-        ramManufacturer = ramManufacturer.replace(r'\n', '')
-        ramManufacturer = ramManufacturer.replace(r"b'Capacity", '')
-        ramManufacturer = ramManufacturer.replace(r"Description", '')
-        ramManufacturer = ramManufacturer.replace(r"DeviceLocator", '')
-        ramManufacturer = ramManufacturer.replace(r"Manufacturer", '')
-        ramManufacturer = ramManufacturer.replace(r"SMBIOSMemoryType", '')
-        ramManufacturer = ramManufacturer.replace(r"MemoryType", '')
-        ramManufacturer = ramManufacturer.replace(r"Name", '')
-        ramManufacturer = ramManufacturer.replace(r"PartNumber", '')
-        ramManufacturer = ramManufacturer.replace(r"PositionInRow", '')
-        ramManufacturer = ramManufacturer.replace(r"SerialNumber", '')
-        ramManufacturer = ramManufacturer.replace(r"Speed", '')
-        ramManufacturer = ramManufacturer.replace(r"Tag", '')
-        ramManufacturer = ramManufacturer.replace(r"TotalWidth", '')
-        ramManufacturer = ramManufacturer.replace(r"TypeDetail", '')
-        ramManufacturer = ramManufacturer.replace(r"'", '')
-        ramManufacturer = ramManufacturer.strip()
-        rams = ramManufacturer.split('  ')
-        while '' in rams:
-            rams.remove('')
+        try:
+            Capacity = str(subprocess.check_output(
+                'wmic memorychip get Capacity'))
+            Capacity = Capacity.replace(r"b'Capacity", '')
+            Capacity = self.rmClear(Capacity)
+            for i in range(len(Capacity)):
+                Capacity[i] = f"{round(int(Capacity[i])/1024**3)}"
+        except:
+            Capacity = unknown
+        try:
+            Description = str(subprocess.check_output(
+                'wmic memorychip get Description'))
+            Description = Description.replace(r"b'Description", '')
+            Description = self.rmClear(Description)
+        except:
+            Description = unknown
+        try:
+            DeviceLocator = str(subprocess.check_output(
+                'wmic memorychip get DeviceLocator'))
+            DeviceLocator = DeviceLocator.replace(r"b'DeviceLocator", '')
+            DeviceLocator = self.rmClear(DeviceLocator)
+        except:
+            DeviceLocator = unknown
+        try:
+            Manufacturer = str(subprocess.check_output(
+                'wmic memorychip get Manufacturer'))
+            Manufacturer = Manufacturer.replace(r"b'Manufacturer", '')
+            Manufacturer = self.rmClear(Manufacturer)
+        except:
+            Manufacturer = unknown
+        try:
+            MemoryType = str(subprocess.check_output(
+                'wmic memorychip get MemoryType'))
+            MemoryType = MemoryType.replace(r"b'MemoryType", '')
+            MemoryType = self.rmClear(MemoryType)
+        except:
+            MemoryType = unknown
+        try:
+            Name = str(subprocess.check_output('wmic memorychip get Name'))
+            Name = Name.replace(r"b'Name", '')
+            Name = self.rmClear(Name)
+        except:
+            Name = unknown
+        try:
+            PartNumber = str(subprocess.check_output(
+                'wmic memorychip get PartNumber'))
+            PartNumber = PartNumber.replace(r"b'PartNumber", '')
+            PartNumber = self.rmClear(PartNumber)
+        except:
+            PartNumber = unknown
+        try:
+            PositionInRow = str(subprocess.check_output(
+                'wmic memorychip get PositionInRow'))
+            PositionInRow = PositionInRow.replace(r"b'PositionInRow", '')
+            PositionInRow = self.rmClear(PositionInRow)
+        except:
+            PositionInRow = unknown
+        try:
+            SerialNumber = str(subprocess.check_output(
+                'wmic memorychip get SerialNumber'))
+            SerialNumber = SerialNumber.replace(r"b'SerialNumber", '')
+            SerialNumber = self.rmClear(SerialNumber)
+        except:
+            SerialNumber = unknown
+        try:
+            SMBIOSMemoryType = str(subprocess.check_output(
+                'wmic memorychip get SMBIOSMemoryType'))
+            SMBIOSMemoryType = SMBIOSMemoryType.replace(
+                r"b'SMBIOSMemoryType", '')
+            SMBIOSMemoryType = self.rmClear(SMBIOSMemoryType)
+        except:
+            SMBIOSMemoryType = unknown
+        try:
+            Speed = str(subprocess.check_output('wmic memorychip get Speed'))
+            Speed = Speed.replace(r"b'Speed", '')
+            Speed = self.rmClear(Speed)
+        except:
+            Speed = unknown
+        try:
+            Tag = str(subprocess.check_output(
+                'wmic memorychip get Tag'))
+            Tag = Tag.replace(r"b'Tag", '')
+            Tag = self.rmClear(Tag)
+        except:
+            Tag = unknown
+        try:
+            TotalWidth = str(subprocess.check_output(
+                'wmic memorychip get TotalWidth'))
+            TotalWidth = TotalWidth.replace(r"b'TotalWidth", '')
+            TotalWidth = self.rmClear(TotalWidth)
+        except:
+            TotalWidth = unknown
+        try:
+            TypeDetail = str(subprocess.check_output(
+                'wmic memorychip get TypeDetail'))
+            TypeDetail = TypeDetail.replace(r"b'TypeDetail", '')
+            TypeDetail = self.rmClear(TypeDetail)
+        except:
+            TypeDetail = unknown
         RAMs_exp = []
-        chunk_size = 14
-        for i in range(0, len(rams), chunk_size):
-            RAMs_exp.append(rams[i:i+chunk_size])
-        for i in range(len(RAMs_exp)):
-            RAMs_exp[i][0] = f"{round(int(RAMs_exp[i][0])/1024**3)}"
-        for i in range(len(RAMs_exp)):
-            Name = None
+        for i in range(len(Capacity)):
             DDR = None
             RAM = {}
-            Description = str(RAMs_exp[i][1]).strip()
-            Name_ = str(RAMs_exp[i][5]).strip()
-            Tag = str(RAMs_exp[i][11]).strip()
-            if Description != '':
-                Name = f"{Description} [{i}]"
-            elif Name_ != '':
-                Name = f"{Name_} [{i}]"
-            if int(RAMs_exp[i][4]) != 0:
-                if int(RAMs_exp[i][4]) == 20:
-                    DDR = "DDR1"
-                elif int(RAMs_exp[i][4]) == 21:
-                    DDR = "DDR2"
-                elif int(RAMs_exp[i][4]) == 22:
-                    DDR = "DDR2 FB-DIMM"
-                elif int(RAMs_exp[i][4]) == 24:
-                    DDR = "DDR3"
-                elif int(RAMs_exp[i][4]) == 26:
-                    DDR = "DDR4"
+            if SMBIOSMemoryType:
+                for i in range(len(SMBIOSMemoryType)):
+                    if int(SMBIOSMemoryType[i]) == 20:
+                        DDR = "DDR1"
+                    elif int(SMBIOSMemoryType[i]) == 21:
+                        DDR = "DDR2"
+                    elif int(SMBIOSMemoryType[i]) == 22:
+                        DDR = "DDR2 FB-DIMM"
+                    elif int(SMBIOSMemoryType[i]) == 24:
+                        DDR = "DDR3"
+                    elif int(SMBIOSMemoryType[i]) == 26:
+                        DDR = "DDR4"
+                    else:
+                        DDR = "Unknown"
+            elif MemoryType:
+                for i in range(len(MemoryType)):
+                    if int(MemoryType[i]) == 20:
+                        DDR = "DDR1"
+                    elif int(MemoryType[i]) == 21:
+                        DDR = "DDR2"
+                    elif int(MemoryType[i]) == 22:
+                        DDR = "DDR2 FB-DIMM"
+                    elif int(MemoryType[i]) == 24:
+                        DDR = "DDR3"
+                    elif int(MemoryType[i]) == 26:
+                        DDR = "DDR4"
+                    else:
+                        DDR = "Unknown"
+            else:
+                DDR = "Unknown"
+            for i in range(len(Capacity)):
+                RAM[f"Size[{i}]"] = f"{Capacity[i]}GB"
+                RAM[f"DeviceLocator[{i}]"] = f"{DeviceLocator[i]}"
+                RAM[f"Manufacturer[{i}]"] = f"{Manufacturer[i]}"
+                RAM[f"Type[{i}]"] = f"{DDR}"
+                RAM[f"PartNumber[{i}]"] = f"{PartNumber[i]}"
+                if PositionInRow:
+                    RAM[f"PositionInRow[{i}]"] = f"{PositionInRow[i]}"
+                RAM[f"SerialNumber[{i}]"] = f"{SerialNumber[i]}"
+                RAM[f"Speed[{i}]"] = f"{Speed[i]} Mhz"
+                RAM[f"TotalWidth[{i}]"] = f"{TotalWidth[i]}"
+                RAM[f"TypeDetail[{i}]"] = f"{TypeDetail[i]}"
+                if Tag:
+                    RAMs[f"{Tag[i]}"] = RAM
                 else:
-                    DDR = "None"
-            if int(RAMs_exp[i][9]) != 0:
-                if int(RAMs_exp[i][9]) == 20:
-                    DDR = "DDR1"
-                elif int(RAMs_exp[i][9]) == 21:
-                    DDR = "DDR2"
-                elif int(RAMs_exp[i][9]) == 22:
-                    DDR = "DDR2 FB-DIMM"
-                elif int(RAMs_exp[i][9]) == 24:
-                    DDR = "DDR3"
-                elif int(RAMs_exp[i][9]) == 26:
-                    DDR = "DDR4"
-                else:
-                    DDR = "None"
-            RAM[f"Size"] = f"{RAMs_exp[i][0]}GB"
-            RAM[f"DeviceLocator"] = f"{RAMs_exp[i][2]}"
-            RAM[f"Manufacturer"] = f"{RAMs_exp[i][3]}"
-            RAM[f"Type"] = f"{DDR}"
-            RAM[f"PartNumber"] = f"{RAMs_exp[i][6]}"
-            RAM[f"PositionInRow"] = f"{RAMs_exp[i][7]}"
-            RAM[f"SerialNumber"] = f"{RAMs_exp[i][8]}"
-            RAM[f"Speed"] = f"{RAMs_exp[i][10]} Mhz"
-            RAM[f"TotalWidth"] = f"{RAMs_exp[i][12]}"
-            RAM[f"TypeDetail"] = f"{RAMs_exp[i][13]}"
-            RAMs[f"{Name}"] = RAM
+                    RAMs[f"{Name[i]}"] = RAM
         return RAMs
 
     def graphic(self):
@@ -395,13 +475,11 @@ class Windows:
 
         # ==== MEMORY ====
         rams = self.ramManufacturer()
-        m = 0
         for k, v in rams.items():
             if isinstance(v, dict):
                 self.infdb[k] = "-"*10
                 for k2, v2 in v.items():
-                    self.infdb[f"{k2}[{m}]"] = v2
-                m += 1
+                    self.infdb[f"{k2}"] = v2
             else:
                 self.infdb[k] = v
 
