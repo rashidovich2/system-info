@@ -1,4 +1,8 @@
 # system information
-Display system hardware and software information
 
-![system-info](https://user-images.githubusercontent.com/53658372/170818383-dc0e7c4e-ffa4-4979-888e-d3404ea84f21.PNG)
+
+# Capabilities:
+- Display all software and system hardware information
+- Automatic reporting of hardware and software information in txt file
+
+![softinfo](https://user-images.githubusercontent.com/53658372/172551509-2ec2afd0-ef2c-443c-aebe-489afb80ecde.png)
