@@ -1,5 +1,5 @@
-# system information
-
+# System Information
+* Show all the system information with Python
 
 # Capabilities:
 - Display all software and system hardware information
