@@ -13,8 +13,8 @@ import winreg as reg
 from datetime import datetime
 try:
     from tkinter import *
-except ImportError:
-    from Tkinter import *
+except:
+    pass
 
 
 class Windows:
