@@ -11,10 +11,7 @@ import os
 import subprocess
 import winreg as reg
 from datetime import datetime
-try:
-    from tkinter import *
-except:
-    pass
+from tkinter import *
 
 
 class Windows:
