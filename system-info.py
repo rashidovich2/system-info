@@ -35,8 +35,7 @@ class Windows:
         sysdm = sysdm.replace(r"'", '')
         sysdm = sysdm.replace(r"  ", ' ')
         sysdm = sysdm.strip()
-        sysdm = re.sub(' +', ' ', sysdm)
-        return sysdm
+        return re.sub(' +', ' ', sysdm)
 
     def get_size(self, bytes, suffix="B"):
         """
@@ -92,11 +91,10 @@ class Windows:
                 monitor = monitor.split('\\')
                 monitors.append(monitor[1])
         except Exception as ex:
-            monitors = []
             monitor = win32api.EnumDisplayDevices('\\\.\\DISPLAY1', 0)
             monitor = monitor.DeviceID
             monitor = monitor.split("\\")
-            monitors.append(monitor[1])
+            monitors = [monitor[1]]
         finally:
             return monitors
 
@@ -114,12 +112,10 @@ class Windows:
         HDD = HDD.split('  ')
         while '' in HDD:
             HDD.remove('')
-        HDDs = list()
         chunk_size = 4
-        for i in range(0, len(HDD), chunk_size):
-            HDDs.append(HDD[i:i+chunk_size])
-        for i in range(len(HDDs)):
-            HDDs[i][2] = f"{round(int(HDDs[i][2])/1024**3)} GB"
+        HDDs = [HDD[i:i+chunk_size] for i in range(0, len(HDD), chunk_size)]
+        for HDD_ in HDDs:
+            HDD_[2] = f"{round(int(HDD_[2]) / 1024**3)} GB"
         for i in range(len(HDDs)):
             self.infdb[f"HDD Model[{i}]"] = f"{HDDs[i][0]}"
             self.infdb[f"HDD serialNumber[{i}]"] = f"{HDDs[i][1]}"
@@ -128,12 +124,11 @@ class Windows:
         partitions = psutil.disk_partitions()
         for i, partition in enumerate(partitions):
             try:
-                partname = str(partition.device).replace('\\', '')
-                mountpoint = str(partition.mountpoint).replace('\\', '')
-                if partname != "":
+                if partname := str(partition.device).replace('\\', ''):
                     self.infdb[f"Partition[{i}]:"] = partname
                     PARTITION = partname
                 else:
+                    mountpoint = str(partition.mountpoint).replace('\\', '')
                     self.infdb[f"Partition[{i}]:"] = mountpoint
                     PARTITION = mountpoint
                 self.infdb[f"File system type[{PARTITION}]"] = partition.fstype
@@ -166,7 +161,7 @@ class Windows:
             dvdrom = dvdrom.replace(r"b'Caption", '')
             dvdrom = dvdrom.replace(r"'", '')
             dvdrom = dvdrom.strip()
-            if not 'b' == dvdrom:
+            if dvdrom != 'b':
                 self.infdb["DvD Rom"] = dvdrom
             else:
                 raise Exception('No Instance(s) Available.')
@@ -184,10 +179,9 @@ class Windows:
         return cmds
 
     def ramManufacturer(self):
-        RAMs = {}
         unknown = None
         mem = psutil.virtual_memory()
-        RAMs["Memory Total"] = f"{self.get_size(mem.total)}"
+        RAMs = {"Memory Total": f"{self.get_size(mem.total)}"}
         RAMs["Memory Available"] = f"{self.get_size(mem.available)}"
         RAMs["Memory Used"] = f"{self.get_size(mem.used)}"
         RAMs["Memory Percentage"] = f"{mem.percent}%"
@@ -370,12 +364,9 @@ class Windows:
             nets.remove('')
         for i, nt in enumerate(nets):
             nets[i] = nt.strip()
-        networks = []
-        for nt in nets:
-            networks.append(nt.split('  '))
+        networks = [nt.split('  ') for nt in nets]
         Networks = ""
-        z = 0
-        for n in networks:
+        for z, n in enumerate(networks):
             mac = n[0]
             try:
                 nets = n[1]
@@ -386,7 +377,6 @@ class Windows:
             if z > 0:
                 Networks += '\n'
             Networks += f"{nets}  [{mac}]"
-            z += 1
         return Networks
 
     def devices(self):
@@ -401,12 +391,10 @@ class Windows:
         for i, nt in enumerate(devss):
             devss[i] = nt.strip()
         dvs = ""
-        z = 0
-        for d in devss:
+        for z, d in enumerate(devss):
             if z > 0:
                 dvs += '\n'
             dvs += d
-            z += 1
         return dvs
 
     def ip_address(self):
@@ -429,7 +417,7 @@ class Windows:
         self.infdb["Release"] = uname.release
         self.infdb["Version"] = uname.version
         self.infdb["System Type"] = platform.architecture()[0]
-        self.infdb["User"] = str(os.getlogin())
+        self.infdb["User"] = os.getlogin()
         self.infdb["Install Date"] = installDateWin
         self.infdb["sysdm"] = self.computersystem()
         self.infdb["Machine"] = uname.machine
@@ -490,12 +478,9 @@ class Windows:
 
         # Graphics
         gr = self.graphic()
-        g = 0
-        for i in range(0, len(gr), 2):
+        for g, i in enumerate(range(0, len(gr), 2)):
             self.infdb[f"Graphic Card[{g}]"] = gr[i+1].strip()
             self.infdb[f"Graphic Size[{g}]"] = gr[i].strip()
-            g += 1
-
         # === Disk Information ====
         self.diskSpace()
         # get all disk partitions
